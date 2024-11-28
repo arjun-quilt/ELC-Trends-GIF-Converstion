@@ -3,3 +3,5 @@ pandas
 moviepy == 1.0.3
 requests
 google-cloud-storage
+openpyxl
+os
