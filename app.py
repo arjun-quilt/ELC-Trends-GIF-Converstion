@@ -6,13 +6,22 @@ from moviepy.editor import VideoFileClip
 import requests
 from google.cloud import storage
 import os
+import tempfile
 
 # Streamlit Title
 st.title("ELC Trends Gifs")
 st.write("Interact with the Apify API to process TikTok videos, generate GIFs, and export trend data.")
 
-#setting the env variable for uplaoding the files into bucket 
-os.environ["GOOGLE_APPLICATION_CREDENTIALS"] = st.secrets["gcp_secret"]
+# Extract the secret
+gcp_secret = st.secrets["gcp_secret"]
+
+# Write the secret to a temporary file
+with tempfile.NamedTemporaryFile(delete=False, mode="w") as temp_file:
+    temp_file.write(gcp_secret)
+    temp_file_path = temp_file.name
+
+# Set the environment variable to the temporary file path
+os.environ["GOOGLE_APPLICATION_CREDENTIALS"] = temp_file_path
 
 # Define API Functions
 def run_actor_task(data: dict) -> dict:
