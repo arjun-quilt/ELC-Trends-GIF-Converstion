@@ -11,6 +11,9 @@ import os
 st.title("ELC Trends Gifs")
 st.write("Interact with the Apify API to process TikTok videos, generate GIFs, and export trend data.")
 
+#setting the env variable for uplaoding the files into bucket 
+os.environ["GOOGLE_APPLICATION_CREDENTIALS"] = st.secrets["gcp_secret"]
+
 # Define API Functions
 def run_actor_task(data: dict) -> dict:
     headers = {"Content-Type": "application/json"}
@@ -101,6 +104,10 @@ if uploaded_file and country_name:
         output_file = f"{country_name}_duration.csv"
         output_df.to_csv(output_file, index=False, encoding="utf_8_sig")
 
+        #download the duration file 
+        st.download_button("Download Duration Data", data=output_file, file_name=f"{country_name}_duration.csv")
+
+
         #downloading the videos
         st.write("Downloading Videos...")
 
@@ -164,14 +171,11 @@ if uploaded_file and country_name:
             output_df.to_csv(f"{country_name}_trend_gifs.csv", index=False, encoding="utf_8_sig")
 
         st.write("GIF Conversion Completed!")
-        st.download_button("Download GIFs Data", data=output_file, file_name=f"{country_name}_trend_gifs.csv")
-
-
-        st.write("Uploading the gifs to Gcs...")
 
 
         #uploading gifs to gcs 
-        if st.button("Upload GIFs to GCS"):        
+        if st.button("Upload GIFs to GCS"):
+            st.write("Uploading the gifs to Gcs...")        
             def upload_folder_to_gcs(bucket_name, source_folder, destination_prefix=""):
                 """
                 Recursively uploads a local folder to a Google Cloud Storage bucket.
