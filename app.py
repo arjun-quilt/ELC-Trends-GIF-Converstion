@@ -53,14 +53,19 @@ def convert_to_gif(media_file, max_duration=2, fps=3, output_dir='/content/gifs'
     except Exception as e:
         raise Exception(f"Failed to convert {media_file}: {e}")
 
+# Define a list of countries
+country_options = ["USA", "Canada", "UK", "Australia", "India"]  # Add your set of countries here
+
+# Replace the text input with a dropdown selection
+country_name = st.selectbox("Select Country Name", country_options)
+
 # File Upload
 uploaded_file = st.file_uploader("Upload Excel file", type=["xlsx"])
-country_name = st.text_input("Enter Country Name")
 
 if uploaded_file and country_name:
     # Read the Excel file
     input_df = pd.read_excel(uploaded_file, sheet_name=f"{country_name}_Links")
-    st.write(len(input_df['Links']))
+    st.write("length of input link",len(input_df['Links']))
     input_list_of_dicts = input_df.to_dict(orient="records")
 
     input_params = {
@@ -104,6 +109,7 @@ if uploaded_file and country_name:
             clean_url = input_dict["Links"]
             video_id = clean_url.split("?")[0].split("/")[-1]
             input_dict["Gcs Url"] = f"https://storage.googleapis.com/tiktok-actor-content/{video_id}.mp4"
+            input_dict["Gif Url"] = f"https://storage.googleapis.com/tiktok-actor-content/gifs_20240419/{video_id}.gif"
 
         output_df = pd.DataFrame(input_list_of_dicts)
         
@@ -112,19 +118,31 @@ if uploaded_file and country_name:
         
         output_file = f"{country_name}_duration.csv"
         output_df.to_csv(output_file, index=False, encoding="utf_8_sig")
+        # csv_data = output_df.to_csv(index=False, encoding="utf_8_sig")
+    
+    # Add a download button to allow users to download the CSV file
+        st.download_button(
+            label="Download Duration CSV",
+            data=output_df.to_csv( index=False, encoding="utf_8_sig"),
+            file_name=output_file,
+            mime="text/csv"
+    ) # THE ABOVE BLOCK WILL GENERTE THE GSC AND GIF URL ALSONG WITH THE DURATION DATA - pending
+      # NEED TO ADD VALIDATION FOR THE SCRIPT -done 
+      # able to generate the duration.csv file also  - done 
 
-        #download the duration file 
-        st.download_button("Download Duration Data", data=output_file, file_name=f"{country_name}_duration.csv")
-
-
+        
         #downloading the videos
         st.write("Downloading Videos...")
 
         df = pd.read_csv(f"{country_name}_duration.csv")
         list_of_dicts = df.to_dict(orient="records")
 
+        # Initialize a list to keep track of failed downloads
+        failed_downloads = []
+
         for raw_row in input_list_of_dicts:
             gcs_url = raw_row["Gcs Url"]
+            input_link = raw_row["Links"]  # Store the original input link
             try:
                 video_id = gcs_url.split("/")[-1].split(".")[0]
                 output_file_path = f"{country_name}_tiktok_videos_all/{video_id}.mp4"
@@ -132,18 +150,20 @@ if uploaded_file and country_name:
                     os.makedirs(f"{country_name}_tiktok_videos_all")
                 st.write(f"Downloading video from {gcs_url} to {output_file_path}...")
                 urllib.request.urlretrieve(gcs_url, output_file_path)
-                st.write(f"Successfully downloaded {gcs_url}.")
+                st.write(f"Successfully downloaded {input_link}. ✅")  # Changed to input link
             except Exception as e:
-                st.write(f"Error downloading {gcs_url}: {e}")
+                st.write(f"Error downloading {input_link}: {e} ❌")  # Changed to input link
+                failed_downloads.append(input_link)  # Add the failed input link to the list
+
+        # Print the failed download URLs at the end
+        if failed_downloads:
+            st.header("The following input URLs failed to download:")
+            for url in failed_downloads:
+                st.write(url)
 
         st.write("Converting Videos to GIFs...")
 
         df = pd.read_csv(f"{country_name}_duration.csv")
-        
-        # Remove all instances of duplicate columns
-        cols_to_drop = df.columns[df.columns.duplicated()].unique()
-        df = df.drop(columns=cols_to_drop)
-
         list_of_dicts = df.to_dict(orient="records")
 
         df2 = pd.read_excel(uploaded_file, sheet_name=f"{country_name}_Trend details")
@@ -165,10 +185,10 @@ if uploaded_file and country_name:
                 
                 
                 trend_gif_dict[raw_row["Trend"]] = gif_path
-                st.write(f"Successfully converted {video_url} to GIF at {gif_path}.")
+                st.write(f"Successfully converted {video_url} to GIF at {gif_path}. ✅")
 
             except Exception as e:
-                st.write(f"Error converting {video_url} to GIF: {e}")
+                st.write(f"Error converting {video_url} to GIF: {e} ❌")
 
             # Add this block to update trend details with GIF paths
             for trend_details_dict in trend_details_list_of_dicts:
